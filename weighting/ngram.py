@@ -7,7 +7,7 @@ Homework 2
 """
 
 import html2text as h2t
-import os, codecs, sys, time, math
+import os, codecs, sys, time, math, re
 
 # check for command line arguments, must have input and output directory path
 if len(sys.argv) != 3:
@@ -34,11 +34,8 @@ prev = time.time()
 # file counter
 idx=0
 
-# read stopwords.txt file to get list of stopwords
-stfile = open("stopwords.txt", "r")
-stopwordslist = stfile.read()
-stopwordslist = stopwordslist.replace("'", "")
-stopwordslist = stopwordslist.split("\n")
+# 5 character ngram
+ngram_number = 5
 
 # get all files in the input folder
 files  = os.listdir(inpath)
@@ -63,38 +60,39 @@ for file in files:
         # replace all unwanted characters from escape sequence with whitespace character
         for esc in escapeChars:
             text = text.replace(esc, " ")
-        
-        # split text string into tokens using whitespace
-        tokens = text.split(' ')
+
+        # trim all whitespace
+        text = re.sub(r'\s+', ' ', text)
 
         # contains token frequency for each file
         freq_dist[file] = {}
         # contains term frequency weight of tokens for each file
         tf[file] = {}
 
+        length = len(text) - ngram_number
         # iterate all tokens and create hashmap with frequency and document count
-        for i in tokens:
-            # lower case all characters
-            i = i.lower()
-            # ignore empty tokens and stopwords
-            if len(i) > 1 and i not in stopwordslist:
-                # create frequency distrbution hashmap
-                if i in freq_dist[file]:
-                    freq_dist[file][i] += 1
-                else:
-                    freq_dist[file][i] = 1
+        for i in range(length):
+            # extract 5 character token
+            token = text[i:i+ngram_number]
+            token = token.lower()
 
-                # create document frequency hashmap
-                if i in doc_freq:
-                    if file not in doc_freq[i]:
-                        doc_freq[i].append(file)
-                else:
-                    doc_freq[i] = [file]
+            # create frequency distrbution hashmap
+            if token in freq_dist[file]:
+                freq_dist[file][token] += 1
+            else:
+                freq_dist[file][token] = 1
 
-        for i in freq_dist[file]:
+            # create document frequency hashmap
+            if token in doc_freq:
+                if file not in doc_freq[token]:
+                    doc_freq[token].append(file)
+            else:
+                doc_freq[token] = [file]
+
+        for token in freq_dist[file]:
             # calculate term frequency weights, tf = f(d,w)/|D|
-            wordtf = freq_dist[file][i]/len(tokens)
-            tf[file][i] = wordtf
+            wordtf = (freq_dist[file][token] * ngram_number)/length
+            tf[file][token] = wordtf
 
         # find elapsed CPU time of files proccessed
         if idx in [10, 20, 40, 80, 100, 200, 300, 400, 500]:
@@ -128,7 +126,7 @@ for file in freq_dist:
     idx += 1
 
     # write tfidf weights to filename.wts as tsv
-    fw = codecs.open(os.path.join(outpath, file) +".wts", 'w', encoding='ascii',errors="ignore")
+    fw = codecs.open(os.path.join(outpath, file) +".ngram.wts", 'w', encoding='ascii',errors="ignore")
     # sort tokens in descending order of tfidf weights
     sortedvals = sorted(tfidf.items(), key=lambda kv: kv[1], reverse=True)
     for tok, tfidf in sortedvals:
