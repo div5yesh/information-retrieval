@@ -3,7 +3,7 @@ Divyesh Chitroda, d151@umbc.edu
 CampusId: GW92650
 
 CMSC 676 – Information Retrieval
-Homework 2
+Homework 3
 """
 
 import html2text as h2t
